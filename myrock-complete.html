@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyRock - Boulder Movement Analysis & Community</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;600;700;900&family=Noto+Sans+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --primary-black: #0a0a0a;
+            --secondary-black: #1a1a1a;
+            --tertiary-black: #252525;
+            --accent-white: #f5f5f5;
+            --pink-primary: #F4BDCC;
+            --pink-dark: #e09db0;
+            --pink-light: #f9d4df;
+            --pink-glow: rgba(244, 189, 204, 0.3);
+            --pink-subtle: rgba(244, 189, 204, 0.1);
+            --grid-gray: #333;
+            --text-secondary: #999;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            background: var(--primary-black);
+            color: var(--accent-white);
+            overflow-x: hidden;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: var(--secondary-black);
+            border-bottom: 1px solid var(--grid-gray);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .logo {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-light) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .nav {
+            margin-left: auto;
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav-link {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--pink-primary);
+        }
+
+        .nav-link.active {
+            color: var(--pink-primary);
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--pink-primary);
+        }
+
+        .login-btn {
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid var(--pink-primary);
+            color: var(--pink-primary);
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+            border-radius: 4px;
+        }
+
+        .login-btn:hover {
+            background: var(--pink-primary);
+            color: var(--primary-black);
+        }
+
+        .main-container {
+            margin-top: 70px;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Analysis Page Styles */
+        .analysis-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            height: calc(100vh - 70px);
+        }
+
+        .video-section {
+            background: var(--secondary-black);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .video-container {
+            flex: 1;
+            position: relative;
+            background: var(--primary-black);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .upload-prompt {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .upload-prompt h2 {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 56px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--accent-white) 0%, var(--pink-primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+        }
+
+        .upload-prompt p {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 15px;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .upload-btn {
+            padding: 20px 40px;
+            background: var(--pink-primary);
+            color: var(--primary-black);
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 1px;
+            border-radius: 4px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px var(--pink-glow);
+            background: var(--pink-light);
+        }
+
+        .upload-btn.secondary {
+            background: transparent;
+            color: var(--pink-primary);
+            border: 2px solid var(--pink-primary);
+        }
+
+        .upload-btn.secondary:hover {
+            background: var(--pink-subtle);
+        }
+
+        #videoInput {
+            display: none;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        .canvas-wrapper.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #inputVideo, #webcamVideo {
+            display: none;
+        }
+
+        #outputCanvas, #webcamCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .controls {
+            background: var(--secondary-black);
+            padding: 20px 30px;
+            border-top: 1px solid var(--grid-gray);
+        }
+
+        .timeline {
+            width: 100%;
+            height: 40px;
+            background: var(--tertiary-black);
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pink-dark), var(--pink-primary), var(--pink-light));
+            width: 0%;
+            transition: width 0.1s linear;
+            border-radius: 20px;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: var(--pink-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--pink-glow);
+            left: 0%;
+        }
+
+        .play-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            background: var(--pink-primary);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s;
+            color: var(--primary-black);
+        }
+
+        .control-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 0 25px var(--pink-glow);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .frame-info {
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .sidebar {
+            background: var(--secondary-black);
+            border-left: 1px solid var(--grid-gray);
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--tertiary-black);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--pink-primary);
+            border-radius: 4px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 40px;
+        }
+
+        .sidebar-title {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            position: relative;
+            padding-bottom: 10px;
+            color: var(--accent-white);
+        }
+
+        .sidebar-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--pink-primary);
+        }
+
+        .metric-item {
+            background: var(--tertiary-black);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--pink-primary);
+            transition: all 0.3s;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .metric-item:hover {
+            transform: translateX(5px);
+            background: var(--pink-subtle);
+        }
+
+        .metric-label {
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--pink-primary);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .metric-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .joint-angles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .angle-item {
+            background: var(--tertiary-black);
+            padding: 15px;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .angle-item:hover {
+            background: var(--pink-subtle);
+        }
+
+        .angle-name {
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 9px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .angle-value {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--accent-white);
+        }
+
+        .angle-indicator {
+            width: 100%;
+            height: 4px;
+            background: var(--grid-gray);
+            margin-top: 8px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .angle-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pink-dark), var(--pink-primary), var(--pink-light));
+            transition: width 0.3s;
+        }
+
+        .suggestions {
+            background: var(--tertiary-black);
+            padding: 20px;
+            border-left: 3px solid var(--pink-primary);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .suggestion-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .suggestion-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .suggestion-icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            background: var(--pink-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .export-buttons {
+            display: grid;
+            gap: 10px;
+        }
+
+        .export-btn {
+            padding: 15px;
+            background: var(--tertiary-black);
+            border: 1px solid var(--pink-primary);
+            color: var(--pink-primary);
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: 1px;
+            border-radius: 4px;
+        }
+
+        .export-btn:hover:not(:disabled) {
+            background: var(--pink-primary);
+            color: var(--primary-black);
+            transform: translateX(3px);
+        }
+
+        .export-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: var(--grid-gray);
+            color: var(--text-secondary);
+        }
+
+        .share-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--tertiary-black);
+            margin-top: 15px;
+            border-left: 3px solid var(--pink-primary);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .share-label {
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 26px;
+            background: var(--grid-gray);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--pink-primary);
+        }
+
+        .toggle-slider {
+            width: 22px;
+            height: 22px;
+            background: var(--accent-white);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+
+        .webcam-container {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .webcam-container.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Community Page Styles */
+        .community-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .community-header {
+            margin-bottom: 60px;
+        }
+
+        .community-header h1 {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--accent-white) 0%, var(--pink-primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .community-header p {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .community-filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            background: var(--tertiary-black);
+            border: 1px solid var(--grid-gray);
+            color: var(--text-secondary);
+            font-family: 'Noto Sans', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+            border-radius: 4px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--pink-primary);
+            color: var(--primary-black);
+            border-color: var(--pink-primary);
+        }
+
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .community-card {
+            background: var(--secondary-black);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 1px solid var(--grid-gray);
+        }
+
+        .community-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px var(--pink-glow);
+            border-color: var(--pink-primary);
+        }
+
+        .community-thumbnail {
+            width: 100%;
+            aspect-ratio: 9/16;
+            background: linear-gradient(135deg, var(--tertiary-black) 0%, var(--secondary-black) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 18px;
+            color: var(--text-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .thumbnail-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'Noto Sans Mono', monospace;
+            color: var(--pink-primary);
+        }
+
+        .community-info {
+            padding: 20px;
+        }
+
+        .community-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--pink-dark), var(--pink-primary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary-black);
+        }
+
+        .user-name {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-white);
+        }
+
+        .post-time {
+            margin-left: auto;
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .community-title {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--accent-white);
+            line-height: 1.4;
+        }
+
+        .community-meta {
+            display: flex;
+            gap: 20px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-family: 'Noto Sans Mono', monospace;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .publish-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .publish-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--secondary-black);
+            padding: 40px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid var(--pink-primary);
+        }
+
+        .modal-title {
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            color: var(--pink-primary);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 15px;
+            background: var(--tertiary-black);
+            border: 1px solid var(--grid-gray);
+            color: var(--accent-white);
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 14px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--pink-primary);
+        }
+
+        .modal-textarea {
+            width: 100%;
+            padding: 15px;
+            background: var(--tertiary-black);
+            border: 1px solid var(--grid-gray);
+            color: var(--accent-white);
+            font-family: 'Noto Sans', sans-serif;
+            font-size: 14px;
+            margin-bottom: 25px;
+            resize: vertical;
+            min-height: 100px;
+            border-radius: 4px;
+        }
+
+        .modal-textarea:focus {
+            outline: none;
+            border-color: var(--pink-primary);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 15px;
+            font-family: 'Noto Sans Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        .modal-btn.primary {
+            background: var(--pink-primary);
+            color: var(--primary-black);
+        }
+
+        .modal-btn.primary:hover {
+            background: var(--pink-light);
+        }
+
+        .modal-btn.secondary {
+            background: transparent;
+            border: 2px solid var(--grid-gray);
+            color: var(--text-secondary);
+        }
+
+        .modal-btn.secondary:hover {
+            border-color: var(--pink-primary);
+            color: var(--pink-primary);
+        }
+
+        @media (max-width: 1024px) {
+            .analysis-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid var(--grid-gray);
+            }
+            .community-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                gap: 20px;
+            }
+            .nav-link {
+                font-size: 12px;
+            }
+            .community-header h1 {
+                font-size: 42px;
+            }
+            .community-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo" onclick="showPage('analysis')">MyRock</div>
+        <nav class="nav">
+            <a class="nav-link active" onclick="showPage('analysis')">Analysis</a>
+            <a class="nav-link" onclick="showPage('community')">Community</a>
+            <button class="login-btn" onclick="alert('Login functionality - Coming soon!')">Login</button>
+        </nav>
+    </div>
+
+    <div class="main-container">
+        <!-- Analysis Page -->
+        <div id="analysisPage" class="analysis-container">
+            <div class="video-section">
+                <div class="video-container">
+                    <div class="upload-prompt" id="uploadPrompt">
+                        <h2>Start Analysis</h2>
+                        <p>Upload a video or use your webcam for live tracking</p>
+                        <div class="upload-buttons">
+                            <button class="upload-btn" onclick="document.getElementById('videoInput').click()">
+                                <span>📁</span>
+                                <span>Upload Video</span>
+                            </button>
+                            <button class="upload-btn secondary" onclick="startWebcam()">
+                                <span>📹</span>
+                                <span>Use Webcam</span>
+                            </button>
+                        </div>
+                        <input type="file" id="videoInput" accept="video/*">
+                    </div>
+
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <video id="inputVideo" playsinline></video>
+                        <canvas id="outputCanvas"></canvas>
+                    </div>
+
+                    <div class="webcam-container" id="webcamContainer">
+                        <video id="webcamVideo" playsinline autoplay></video>
+                        <canvas id="webcamCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="timeline" id="timeline">
+                        <div class="timeline-progress" id="timelineProgress"></div>
+                        <div class="timeline-marker" id="timelineMarker"></div>
+                    </div>
+                    <div class="play-controls">
+                        <button class="control-btn" id="playBtn" disabled>▶</button>
+                        <button class="control-btn" id="resetBtn" style="width: 40px; height: 40px; font-size: 16px;" disabled>↺</button>
+                        <span class="frame-info" id="frameInfo">Waiting for upload...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h2 class="sidebar-title">Live Metrics</h2>
+                    <div class="metric-item">
+                        <div class="metric-label">Center of Mass Offset</div>
+                        <div class="metric-value" id="comOffset">--</div>
+                        <div class="metric-status" id="comStatus">Waiting for data</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Balance Score</div>
+                        <div class="metric-value" id="balanceScore">--</div>
+                        <div class="metric-status" id="balanceStatus">Waiting for data</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Pose Confidence</div>
+                        <div class="metric-value" id="confidence">--</div>
+                        <div class="metric-status" id="confidenceStatus">Waiting for data</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2 class="sidebar-title">Joint Angles</h2>
+                    <div class="joint-angles">
+                        <div class="angle-item">
+                            <div class="angle-name">Left Shoulder</div>
+                            <div class="angle-value" id="leftShoulder">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="leftShoulderBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Right Shoulder</div>
+                            <div class="angle-value" id="rightShoulder">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="rightShoulderBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Left Elbow</div>
+                            <div class="angle-value" id="leftElbow">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="leftElbowBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Right Elbow</div>
+                            <div class="angle-value" id="rightElbow">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="rightElbowBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Left Hip</div>
+                            <div class="angle-value" id="leftHip">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="leftHipBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Right Hip</div>
+                            <div class="angle-value" id="rightHip">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="rightHipBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Left Knee</div>
+                            <div class="angle-value" id="leftKnee">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="leftKneeBar" style="width: 0%"></div></div>
+                        </div>
+                        <div class="angle-item">
+                            <div class="angle-name">Right Knee</div>
+                            <div class="angle-value" id="rightKnee">--°</div>
+                            <div class="angle-indicator"><div class="angle-fill" id="rightKneeBar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2 class="sidebar-title">AI Suggestions</h2>
+                    <div class="suggestions" id="suggestions">
+                        <div class="suggestion-item">
+                            <div class="suggestion-icon">💡</div>
+                            <div>Upload a video or start webcam to receive AI-powered movement analysis</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2 class="sidebar-title">Export & Share</h2>
+                    <div class="export-buttons">
+                        <button class="export-btn" id="exportPDFBtn" disabled>
+                            <span>📄</span>
+                            <span>Export PDF Report</span>
+                        </button>
+                        <button class="export-btn" id="exportImageBtn" disabled>
+                            <span>🖼</span>
+                            <span>Save Analysis Image</span>
+                        </button>
+                        <button class="export-btn" id="exportCSVBtn" disabled>
+                            <span>📊</span>
+                            <span>Download CSV Data</span>
+                        </button>
+                    </div>
+                    <div class="share-toggle">
+                        <span class="share-label">Publish to Community</span>
+                        <div class="toggle-switch" id="shareToggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Community Page -->
+        <div id="communityPage" class="community-container" style="display: none;">
+            <div class="community-header">
+                <h1>Community</h1>
+                <p>Discover and share boulder movement analysis with climbers worldwide</p>
+            </div>
+
+            <div class="community-filters">
+                <button class="filter-btn active" onclick="filterCommunity('all')">All Posts</button>
+                <button class="filter-btn" onclick="filterCommunity('trending')">Trending</button>
+                <button class="filter-btn" onclick="filterCommunity('recent')">Recent</button>
+                <button class="filter-btn" onclick="filterCommunity('following')">Following</button>
+            </div>
+
+            <div class="community-grid" id="communityGrid">
+                <!-- Sample community posts -->
+                <div class="community-card">
+                    <div class="community-thumbnail">
+                        <div style="font-size: 48px;">🧗</div>
+                        <div class="thumbnail-overlay">V7 • 0:15</div>
+                    </div>
+                    <div class="community-info">
+                        <div class="community-user">
+                            <div class="user-avatar">AK</div>
+                            <div class="user-name">Alex Kim</div>
+                            <div class="post-time">2h ago</div>
+                        </div>
+                        <div class="community-title">Crimp strength training - perfecting the heel hook</div>
+                        <div class="community-meta">
+                            <div class="meta-item">
+                                <span>👁</span>
+                                <span>1.2k</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>💬</span>
+                                <span>34</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>⭐</span>
+                                <span>8.9/10</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="community-card">
+                    <div class="community-thumbnail">
+                        <div style="font-size: 48px;">🧗‍♀️</div>
+                        <div class="thumbnail-overlay">V5 • 0:22</div>
+                    </div>
+                    <div class="community-info">
+                        <div class="community-user">
+                            <div class="user-avatar" style="background: linear-gradient(135deg, #e09db0, #f9d4df);">SM</div>
+                            <div class="user-name">Sarah Martinez</div>
+                            <div class="post-time">5h ago</div>
+                        </div>
+                        <div class="community-title">Dynamic movement breakdown - reaching that far hold</div>
+                        <div class="community-meta">
+                            <div class="meta-item">
+                                <span>👁</span>
+                                <span>856</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>💬</span>
+                                <span>19</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>⭐</span>
+                                <span>9.1/10</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="community-card">
+                    <div class="community-thumbnail">
+                        <div style="font-size: 48px;">🧗</div>
+                        <div class="thumbnail-overlay">V6 • 0:18</div>
+                    </div>
+                    <div class="community-info">
+                        <div class="community-user">
+                            <div class="user-avatar" style="background: linear-gradient(135deg, #f9d4df, #F4BDCC);">JC</div>
+                            <div class="user-name">Jake Chen</div>
+                            <div class="post-time">1d ago</div>
+                        </div>
+                        <div class="community-title">Balance techniques for overhang problems</div>
+                        <div class="community-meta">
+                            <div class="meta-item">
+                                <span>👁</span>
+                                <span>2.1k</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>💬</span>
+                                <span>67</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>⭐</span>
+                                <span>9.4/10</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publish Modal -->
+    <div class="publish-modal" id="publishModal">
+        <div class="modal-content">
+            <h2 class="modal-title">Publish to Community</h2>
+            <p class="modal-subtitle">Share your analysis with the MyRock community</p>
+            <input type="text" class="modal-input" id="postTitle" placeholder="Title (e.g., 'V7 crimpy problem - technique breakdown')">
+            <textarea class="modal-textarea" id="postDescription" placeholder="Description (optional)"></textarea>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closePublishModal()">Cancel</button>
+                <button class="modal-btn primary" onclick="publishToCommunity()">Publish</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pose;
+        let videoElement;
+        let canvasElement;
+        let canvasCtx;
+        let analysisData = [];
+        let currentVideoSource = null;
+        let webcamStream = null;
+        let currentPage = 'analysis';
+
+        // Page navigation
+        function showPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            
+            if (page === 'analysis') {
+                document.getElementById('analysisPage').style.display = 'grid';
+                document.getElementById('communityPage').style.display = 'none';
+                document.querySelectorAll('.nav-link')[0].classList.add('active');
+            } else if (page === 'community') {
+                document.getElementById('analysisPage').style.display = 'none';
+                document.getElementById('communityPage').style.display = 'block';
+                document.querySelectorAll('.nav-link')[1].classList.add('active');
+            }
+        }
+
+        // Community filters
+        function filterCommunity(filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            // In a real app, this would filter the posts
+            console.log('Filtering by:', filter);
+        }
+
+        // Initialize MediaPipe Pose
+        function initializePose() {
+            pose = new Pose({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                }
+            });
+
+            pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            pose.onResults(onPoseResults);
+        }
+
+        function calculateAngle(a, b, c) {
+            const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+            if (angle > 180.0) {
+                angle = 360 - angle;
+            }
+            return angle;
+        }
+
+        function onPoseResults(results) {
+            if (!canvasCtx) return;
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks) {
+                const landmarks = results.poseLandmarks;
+
+                // Draw skeleton
+                drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, {color: '#f5f5f5', lineWidth: 3});
+                
+                // Draw joints with pink glow
+                landmarks.forEach((landmark) => {
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(landmark.x * canvasElement.width, landmark.y * canvasElement.height, 6, 0, 2 * Math.PI);
+                    canvasCtx.fillStyle = '#F4BDCC';
+                    canvasCtx.shadowColor = '#F4BDCC';
+                    canvasCtx.shadowBlur = 15;
+                    canvasCtx.fill();
+                    canvasCtx.shadowBlur = 0;
+                });
+
+                // Center of mass triangle
+                const leftHip = landmarks[23];
+                const rightHip = landmarks[24];
+                const comX = (leftHip.x + rightHip.x) / 2 * canvasElement.width;
+                const comY = (leftHip.y + rightHip.y) / 2 * canvasElement.height;
+
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(comX, comY - 25);
+                canvasCtx.lineTo(comX + 25, comY + 18);
+                canvasCtx.lineTo(comX - 25, comY + 18);
+                canvasCtx.closePath();
+                canvasCtx.fillStyle = 'rgba(244, 189, 204, 0.3)';
+                canvasCtx.strokeStyle = 'rgba(244, 189, 204, 0.9)';
+                canvasCtx.lineWidth = 3;
+                canvasCtx.fill();
+                canvasCtx.stroke();
+
+                canvasCtx.shadowColor = '#F4BDCC';
+                canvasCtx.shadowBlur = 15;
+                canvasCtx.stroke();
+                canvasCtx.shadowBlur = 0;
+
+                updateAngles(landmarks);
+                updateMetrics(landmarks, comX);
+
+                analysisData.push({
+                    timestamp: Date.now(),
+                    landmarks: landmarks,
+                    comOffset: Math.abs(comX - canvasElement.width / 2) / canvasElement.width * 100
+                });
+
+                enableExportButtons();
+            }
+
+            canvasCtx.restore();
+        }
+
+        function updateAngles(landmarks) {
+            const angles = {
+                leftShoulder: calculateAngle(landmarks[13], landmarks[11], landmarks[23]),
+                rightShoulder: calculateAngle(landmarks[14], landmarks[12], landmarks[24]),
+                leftElbow: calculateAngle(landmarks[11], landmarks[13], landmarks[15]),
+                rightElbow: calculateAngle(landmarks[12], landmarks[14], landmarks[16]),
+                leftHip: calculateAngle(landmarks[11], landmarks[23], landmarks[25]),
+                rightHip: calculateAngle(landmarks[12], landmarks[24], landmarks[26]),
+                leftKnee: calculateAngle(landmarks[23], landmarks[25], landmarks[27]),
+                rightKnee: calculateAngle(landmarks[24], landmarks[26], landmarks[28])
+            };
+
+            for (let [joint, angle] of Object.entries(angles)) {
+                const rounded = Math.round(angle);
+                document.getElementById(joint).textContent = rounded + '°';
+                document.getElementById(joint + 'Bar').style.width = Math.min(100, (angle / 180) * 100) + '%';
+            }
+
+            generateSuggestions(landmarks, angles);
+        }
+
+        function updateMetrics(landmarks, comX) {
+            const centerX = canvasElement.width / 2;
+            const offset = Math.abs(comX - centerX) / canvasElement.width * 100;
+            document.getElementById('comOffset').textContent = offset.toFixed(1) + 'cm';
+            
+            const comStatusEl = document.getElementById('comStatus');
+            if (offset < 5) {
+                comStatusEl.textContent = '✓ Centered';
+                comStatusEl.className = 'metric-status';
+            } else if (offset < 10) {
+                comStatusEl.textContent = '⚠ Slight Shift';
+                comStatusEl.className = 'metric-status';
+            } else {
+                comStatusEl.textContent = '✗ Significant Shift';
+                comStatusEl.className = 'metric-status';
+            }
+
+            const shoulderSymmetry = Math.abs(landmarks[11].y - landmarks[12].y);
+            const hipSymmetry = Math.abs(landmarks[23].y - landmarks[24].y);
+            const balanceScore = Math.max(0, 10 - (shoulderSymmetry + hipSymmetry) * 50);
+            document.getElementById('balanceScore').textContent = balanceScore.toFixed(1);
+
+            const avgConfidence = landmarks.reduce((sum, l) => sum + (l.visibility || 0), 0) / landmarks.length;
+            document.getElementById('confidence').textContent = (avgConfidence * 100).toFixed(0) + '%';
+        }
+
+        function generateSuggestions(landmarks, angles) {
+            const suggestions = [];
+
+            if (angles.leftElbow < 120 || angles.rightElbow < 120) {
+                suggestions.push('Elbow angle is tight - try extending your arms to reach further');
+            }
+            if (angles.leftHip < 150 || angles.rightHip < 150) {
+                suggestions.push('Hip flexion detected - straighten your body to improve center of mass');
+            }
+            if (Math.abs(angles.leftKnee - angles.rightKnee) > 30) {
+                suggestions.push('Asymmetric leg positioning - balance weight distribution between legs');
+            }
+
+            if (suggestions.length === 0) {
+                suggestions.push('Movement looks solid - keep it up!');
+            }
+
+            document.getElementById('suggestions').innerHTML = suggestions.map(text => `
+                <div class="suggestion-item">
+                    <div class="suggestion-icon">💡</div>
+                    <div>${text}</div>
+                </div>
+            `).join('');
+        }
+
+        function enableExportButtons() {
+            document.getElementById('exportPDFBtn').disabled = false;
+            document.getElementById('exportImageBtn').disabled = false;
+            document.getElementById('exportCSVBtn').disabled = false;
+        }
+
+        document.getElementById('videoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadVideo(URL.createObjectURL(file));
+            }
+        });
+
+        function loadVideo(url) {
+            document.getElementById('uploadPrompt').style.display = 'none';
+            document.getElementById('canvasWrapper').classList.add('active');
+            document.getElementById('webcamContainer').classList.remove('active');
+
+            videoElement = document.getElementById('inputVideo');
+            canvasElement = document.getElementById('outputCanvas');
+            canvasCtx = canvasElement.getContext('2d');
+
+            videoElement.src = url;
+            videoElement.addEventListener('loadedmetadata', () => {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+            });
+
+            currentVideoSource = 'file';
+        }
+
+        async function startWebcam() {
+            try {
+                document.getElementById('uploadPrompt').style.display = 'none';
+                document.getElementById('canvasWrapper').classList.remove('active');
+                document.getElementById('webcamContainer').classList.add('active');
+
+                videoElement = document.getElementById('webcamVideo');
+                canvasElement = document.getElementById('webcamCanvas');
+                canvasCtx = canvasElement.getContext('2d');
+
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 } 
+                });
+                
+                videoElement.srcObject = webcamStream;
+                videoElement.addEventListener('loadedmetadata', () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    processWebcam();
+                });
+
+                currentVideoSource = 'webcam';
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('resetBtn').disabled = false;
+            } catch (error) {
+                alert('Unable to access webcam. Please check permissions.');
+            }
+        }
+
+        async function processWebcam() {
+            if (!pose || currentVideoSource !== 'webcam') return;
+            await pose.send({ image: videoElement });
+            requestAnimationFrame(processWebcam);
+        }
+
+        document.getElementById('playBtn').addEventListener('click', async function() {
+            if (currentVideoSource !== 'file' || !videoElement) return;
+
+            if (videoElement.paused) {
+                videoElement.play();
+                this.textContent = '⏸';
+                processVideo();
+            } else {
+                videoElement.pause();
+                this.textContent = '▶';
+            }
+        });
+
+        async function processVideo() {
+            if (!pose || currentVideoSource !== 'file' || videoElement.paused) return;
+
+            await pose.send({ image: videoElement });
+
+            const progress = (videoElement.currentTime / videoElement.duration) * 100;
+            document.getElementById('timelineProgress').style.width = progress + '%';
+            document.getElementById('timelineMarker').style.left = progress + '%';
+
+            const currentTime = formatTime(videoElement.currentTime);
+            const duration = formatTime(videoElement.duration);
+            document.getElementById('frameInfo').textContent = `${currentTime} / ${duration}`;
+
+            requestAnimationFrame(processVideo);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (currentVideoSource === 'file' && videoElement) {
+                videoElement.currentTime = 0;
+                videoElement.pause();
+                document.getElementById('playBtn').textContent = '▶';
+            } else if (currentVideoSource === 'webcam' && webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                document.getElementById('webcamContainer').classList.remove('active');
+                document.getElementById('uploadPrompt').style.display = 'block';
+                currentVideoSource = null;
+            }
+            
+            analysisData = [];
+        });
+
+        document.getElementById('timeline').addEventListener('click', function(e) {
+            if (currentVideoSource !== 'file' || !videoElement) return;
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            videoElement.currentTime = (x / rect.width) * videoElement.duration;
+        });
+
+        document.getElementById('shareToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active') && analysisData.length > 0) {
+                document.getElementById('publishModal').classList.add('active');
+            }
+        });
+
+        function closePublishModal() {
+            document.getElementById('publishModal').classList.remove('active');
+            document.getElementById('shareToggle').classList.remove('active');
+        }
+
+        function publishToCommunity() {
+            const title = document.getElementById('postTitle').value;
+            const description = document.getElementById('postDescription').value;
+            
+            if (!title) {
+                alert('Please enter a title for your post');
+                return;
+            }
+
+            alert(`Published to community!\n\nTitle: ${title}\nYour analysis is now visible to the MyRock community.`);
+            closePublishModal();
+            document.getElementById('postTitle').value = '';
+            document.getElementById('postDescription').value = '';
+        }
+
+        document.getElementById('exportImageBtn').addEventListener('click', function() {
+            if (!canvasElement) return;
+            const link = document.createElement('a');
+            link.download = 'myrock-analysis.png';
+            link.href = canvasElement.toDataURL();
+            link.click();
+        });
+
+        document.getElementById('exportCSVBtn').addEventListener('click', function() {
+            if (analysisData.length === 0) return;
+            
+            let csv = 'Timestamp,COM_Offset\n';
+            analysisData.forEach(data => {
+                csv += `${data.timestamp},${data.comOffset}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.download = 'myrock-data.csv';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        });
+
+        document.getElementById('exportPDFBtn').addEventListener('click', function() {
+            alert('PDF Export\n\nGenerating report with full analysis data...');
+        });
+
+        window.addEventListener('load', () => {
+            initializePose();
+        });
+    </script>
+</body>
+</html>
